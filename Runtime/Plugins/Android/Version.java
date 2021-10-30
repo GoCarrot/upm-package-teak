@@ -5,6 +5,6 @@ import java.util.Map;
 
 public class Version {
     public static Map<String, Object> map() {
-        return Collections.singletonMap("unity", "4.1.1");
+        return Collections.singletonMap("unity", "4.1.2");
     }
 }
