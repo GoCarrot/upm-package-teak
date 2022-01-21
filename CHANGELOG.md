@@ -40,7 +40,7 @@ Bug Fixes
 ### iOS
 
 > Breaking Changes  
-> -   None
+> -   Xcode 12.0.1 is now being used to build the Teak SDK.
 >
 > New Features  
 > -   `Teak#handleDeepLinkPath` lets you manually resolve a deep link
@@ -48,6 +48,42 @@ Bug Fixes
 >
 > Bug Fixes  
 > -   None
+
+## 4.1.8
+
+[Download](http://sdks.teakcdn.com/unity/Teak-4.1.8.unitypackage)
+
+Breaking Changes  
+-   None
+
+New Features  
+-   None
+
+Bug Fixes  
+-   Native iOS Fix
+
+### Android
+
+> Breaking Changes  
+> -   None
+>
+> New Features  
+> -   None
+>
+> Bug Fixes  
+> -   None
+
+### iOS
+
+> Breaking Changes  
+> -   None
+>
+> New Features  
+> -   None
+>
+> Bug Fixes  
+> -   Fix idenifyUser server call for manually specifying Facebook Id
+>     and/or Email
 
 ## 4.1.7
 
