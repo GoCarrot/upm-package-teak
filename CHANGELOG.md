@@ -49,6 +49,43 @@ Bug Fixes
 > Bug Fixes  
 > -   None
 
+## 4.1.9
+
+[Download](http://sdks.teakcdn.com/unity/Teak-4.1.9.unitypackage)
+
+Breaking Changes  
+-   None
+
+New Features  
+-   None
+
+Bug Fixes  
+-   Native Android Fix
+
+### Android
+
+> Breaking Changes  
+> -   None
+>
+> New Features  
+> -   None
+>
+> Bug Fixes  
+> -   Add Google Play Billing v4 to `proguard.txt`
+> -   If there's a notification/link launch on 'first launch' use that
+>     instead of the install referrer
+
+### iOS
+
+> Breaking Changes  
+> -   None
+>
+> New Features  
+> -   None
+>
+> Bug Fixes  
+> -   None
+
 ## 4.1.8
 
 [Download](http://sdks.teakcdn.com/unity/Teak-4.1.8.unitypackage)
