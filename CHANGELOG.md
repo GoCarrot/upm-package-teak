@@ -49,6 +49,41 @@ Bug Fixes
 > Bug Fixes  
 > -   None
 
+## 4.1.10
+
+[Download](http://sdks.teakcdn.com/unity/Teak-4.1.10.unitypackage)
+
+Breaking Changes  
+-   None
+
+New Features  
+-   None
+
+Bug Fixes  
+-   Native iOS Fix
+
+### Android
+
+> Breaking Changes  
+> -   None
+>
+> New Features  
+> -   None
+>
+> Bug Fixes  
+> -   None
+
+### iOS
+
+> Breaking Changes  
+> -   None
+>
+> New Features  
+> -   None
+>
+> Bug Fixes  
+> -   Check for `NSNull` before `isEqualToString`
+
 ## 4.1.9
 
 [Download](http://sdks.teakcdn.com/unity/Teak-4.1.9.unitypackage)
