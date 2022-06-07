@@ -18,9 +18,9 @@ using System.Collections.Generic;
 /// </summary>
 public partial class Teak : MonoBehaviour {
     /// <summary>
-    /// Gets the <see cref="Teak"/> singleton.
+    /// Gets the Teak singleton.
     /// </summary>
-    /// <value> The <see cref="Teak"/> singleton.</value>
+    /// <value> The Teak singleton.</value>
     public static Teak Instance {
         get {
             return Teak.Init();
@@ -30,10 +30,9 @@ public partial class Teak : MonoBehaviour {
     /// <summary>
     /// Manually initialize Teak.
     /// </summary>
-    /// <remarks>
+    /// \note
     /// Under normal circumstances it is not necessassary to call this, and you can
     /// simply use Teak.Instance (which calls this method).
-    /// </remarks>
     public static Teak Init() {
         if (mInstance == null) {
             mInstance = FindObjectOfType(typeof(Teak)) as Teak;
@@ -152,9 +151,10 @@ public partial class Teak : MonoBehaviour {
 
     /// <summary>
     /// Teak will log all Unity method calls to the Unity log if true.
-    ///
-    /// This defaults to the setting for the native SDK, but can be assigned at runtime as well.
     /// </summary>
+    /// <remarks>
+    /// This defaults to the setting for the native SDK, but can be assigned at runtime as well.
+    /// </remarks>
     public bool Trace {
         get;
         set;
@@ -163,55 +163,64 @@ public partial class Teak : MonoBehaviour {
     /// <summary>
     /// Value provided to IdentifyUser to opt out of collecting an IDFA for this specific user.
     /// </summary>
+    /// \deprecated Please use <see cref="IdentifyUser(string, UserConfiguration)"/> instead.
     /// <remarks>
     /// If you prevent Teak from collecting the Identifier For Advertisers (IDFA),
     /// Teak will no longer be able to add this user to Facebook Ad Audiences.
     /// </remarks>
+    [Obsolete("Please use IdentifyUser(string, UserConfiguration) instead.")]
     public const string OptOutIdfa = "opt_out_idfa";
 
     /// <summary>
     /// Value provided to IdentifyUser to opt out of collecting a Push Key for this specific user.
     /// </summary>
+    /// \deprecated Please use <see cref="IdentifyUser(string, UserConfiguration)"/> instead.
     /// <remarks>
     /// If you prevent Teak from collecting the Push Key, Teak will no longer be able
     /// to send Local Notifications or Push Notifications for this user.
     /// </remarks>
+    [Obsolete("Please use IdentifyUser(string, UserConfiguration) instead.")]
     public const string OptOutPushKey = "opt_out_push_key";
 
     /// <summary>
     /// Value provided to IdentifyUser to opt out of collecting a Facebook Access Token for this specific user.
     /// </summary>
+    /// \deprecated Please use <see cref="IdentifyUser(string, UserConfiguration)"/> instead.
     /// <remarks>
     /// If you prevent Teak from collecting the Facebook Access Token,
     /// Teak will no longer be able to correlate this user across multiple devices.
     /// </remarks>
-
+    [Obsolete("Please use IdentifyUser(string, UserConfiguration) instead.")]
     public const string OptOutFacebook = "opt_out_facebook";
 
     /// <summary>
     /// Tell Teak how it should identify the current user.
     /// </summary>
+    /// \deprecated Please use <see cref="IdentifyUser(string, UserConfiguration)"/> instead.
     /// <remarks>
-    /// This should be the same way you identify the user in your backend.
+    /// This will also begin tracking and reporting of a session, and track a daily active user.
     /// </remarks>
+    /// \note This should be the same way you identify the user in your backend.
     /// <param name="userIdentifier">An identifier which is unique for the current user.</param>
     /// <param name="email">The email address for the current user.</param>
-    [Obsolete]
-    public void IdentifyUser(string userIdentifier, String email) {
+    [Obsolete("Please use IdentifyUser(string, UserConfiguration) instead.")]
+    public void IdentifyUser(string userIdentifier, string email) {
         this.IdentifyUser(userIdentifier, null, email);
     }
 
     /// <summary>
     /// Tell Teak how it should identify the current user.
     /// </summary>
+    /// \deprecated Please use <see cref="IdentifyUser(string, UserConfiguration)"/> instead.
     /// <remarks>
-    /// This should be the same way you identify the user in your backend.
+    /// This will also begin tracking and reporting of a session, and track a daily active user.
     /// </remarks>
+    /// \note This should be the same way you identify the user in your backend.
     /// <param name="userIdentifier">An identifier which is unique for the current user.</param>
     /// <param name="optOut">A list containing zero or more of: OptOutIdfa, OptOutPushKey, OptOutFacebook</param>
     /// <param name="email">The email address for the current user.</param>
-    [Obsolete]
-    public void IdentifyUser(string userIdentifier, List<string> optOut = null, String email = null) {
+    [Obsolete("Please use IdentifyUser(string, UserConfiguration) instead.")]
+    public void IdentifyUser(string userIdentifier, List<string> optOut = null, string email = null) {
         if (optOut == null) { optOut = new List<string>(); }
 
         UserConfiguration userConfiguration = new UserConfiguration {
@@ -228,11 +237,20 @@ public partial class Teak : MonoBehaviour {
     /// Configuration options for identifying a user.
     /// </summary>
     public class UserConfiguration {
-        /// Email address
+        /// <summary>Email address for the user, or null.</summary>
         public string Email { get; set; }
+
+        /// <summary>Facebook id of the user, or null.</summary>
         public string FacebookId { get; set; }
+
+        /// <summary>True if the user should be opted out of Facebook Id collection.</summary>
+        /// \deprecated Set FacebookId to null instead of using this.
         public bool OptOutFacebook { get; set; }
+
+        /// <summary>True if the user should be opted out of IDFA collection.</summary>
         public bool OptOutIdfa { get; set; }
+
+        /// <summary>True if the user should be opted out of push key collection.</summary>
         public bool OptOutPushKey { get; set; }
 
 #if UNITY_ANDROID
@@ -257,8 +275,9 @@ public partial class Teak : MonoBehaviour {
     /// Tell Teak how it should identify the current user.
     /// </summary>
     /// <remarks>
-    /// This should be the same way you identify the user in your backend.
+    /// This will also begin tracking and reporting of a session, and track a daily active user.
     /// </remarks>
+    /// \note This should be the same way you identify the user in your backend.
     /// <param name="userIdentifier">An identifier which is unique for the current user.</param>
     /// <param name="userConfiguration">Additional configuration for the current user.</param>
     public void IdentifyUser(string userIdentifier, UserConfiguration userConfiguration) {
@@ -298,6 +317,31 @@ public partial class Teak : MonoBehaviour {
         TeakLogout();
 #endif
     }
+
+    /// <summary>Assign email opt-out status for the current user.</summary>
+    /// <param name="optOut">True if the user wants to opt-out of Teak email campaigns.</param>
+    public void SetOptOutEmail(bool optOut) {
+#if UNITY_EDITOR
+#elif UNITY_ANDROID
+        AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
+        teak.CallStatic("setOptOutEmail", optOut);
+#elif UNITY_IPHONE || UNITY_WEBGL
+        TODO
+#endif
+    }
+
+    /// <summary>Assign push notification opt-out status for the current user.</summary>
+    /// <param name="optOut">True if the user wants to opt-out of Teak push notification campaigns.</param>
+    public void SetOptOutPush(bool optOut) {
+#if UNITY_EDITOR
+#elif UNITY_ANDROID
+        AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
+        teak.CallStatic("setOptOutPush", optOut);
+#elif UNITY_IPHONE || UNITY_WEBGL
+        TODO
+#endif
+    }
+
 
     /// <summary>
     /// On iOS, if 'TeakDoNotRefreshPushToken' is set to 'true' then this method
@@ -379,6 +423,12 @@ public partial class Teak : MonoBehaviour {
     /// </summary>
     public event System.Action<Dictionary<string, object>> OnAdditionalData;
 
+
+    /// <summary>
+    /// An event which is dispatched when user data becomes available or is changed.
+    /// </summary>
+    public event System.Action<Teak.UserData> OnUserData;
+
     /// <summary>
     /// An event which is dispatched when the app is launched from a link created by the Teak dashboard.
     /// </summary>
@@ -448,7 +498,7 @@ public partial class Teak : MonoBehaviour {
         if (this.Trace) {
             Debug.Log("[Teak] OpenSettingsAppToThisAppsSettings()");
         }
- 
+
 #if UNITY_EDITOR || UNITY_WEBGL
         return false;
 #elif UNITY_ANDROID
@@ -549,7 +599,7 @@ public partial class Teak : MonoBehaviour {
     /// </summary>
     /// <remarks>
     /// Deep links will not be processed sooner than the earliest of:
-    /// - <see cref="IdentifyUser"/> is called
+    /// - <see cref="IdentifyUser(string, UserConfiguration)"/> is called
     /// - This method is called
     /// </remarks>
     public void ProcessDeepLinks() {
@@ -559,6 +609,31 @@ public partial class Teak : MonoBehaviour {
         teak.CallStatic("processDeepLinks");
 #elif UNITY_IPHONE
         TeakProcessDeepLinks();
+#endif
+    }
+
+    /// <summary>
+    /// Manually pass Teak a deep link path to evalute.
+    /// </summary>
+    /// <remarks>
+    /// This path should be prefixed with a forward slash, and can contain query
+    /// parameters, e.g.
+    ///    /foo/bar?fizz=buzz
+    /// It should not contain a host, or a scheme.
+    ///
+    /// This function will only execute deep links that have been defined through Teak.
+    /// It has no visibility into any other SDKs or custom code.
+    /// </remarks>
+    /// <param name="url">The url to attempt handling.</param>
+    /// <returns>true if the deep link was handled by Teak.</returns>
+    public bool HandleDeepLinkPath(string url) {
+#if UNITY_EDITOR
+        return false;
+#elif UNITY_ANDROID
+        AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
+        return teak.CallStatic<bool>("handleDeepLinkPath", url);
+#elif UNITY_IPHONE || UNITY_WEBGL
+        return TeakHandleDeepLinkPath(url);
 #endif
     }
 
@@ -602,6 +677,9 @@ public partial class Teak : MonoBehaviour {
 
     [DllImport ("__Internal")]
     private static extern void TeakSetStringAttribute(string key, string value);
+
+    [DllImport ("__Internal")]
+    private static extern bool TeakHandleDeepLinkPath(string url);
 #endif
 
 #if UNITY_IPHONE
@@ -801,6 +879,17 @@ public partial class Teak : MonoBehaviour {
         }
     }
 
+    void UserDataEvent(string jsonString) {
+        Dictionary<string, object> json = Json.TryDeserialize(jsonString) as Dictionary<string, object>;
+        if (json == null) {
+            return;
+        }
+
+        if (OnUserData != null) {
+            OnUserData(new Teak.UserData(json));
+        }
+    }
+
 #if UNITY_WEBGL
     void NotificationCallback(string jsonString) {
         try {
@@ -871,12 +960,14 @@ public partial class Teak : MonoBehaviour {
 #if UNITY_EDITOR
         // Editor mode default to trace on
         this.Trace = true;
+#else
+        this.Trace = TeakSettings.TraceLogging;
 #endif
 
         // Trace log default from app config
         object trace = null;
         if (this.AppConfiguration != null && this.AppConfiguration.TryGetValue("traceLog", out trace)) {
-            this.Trace = (bool) trace;
+            this.Trace |= (bool) trace;
         }
     }
 
