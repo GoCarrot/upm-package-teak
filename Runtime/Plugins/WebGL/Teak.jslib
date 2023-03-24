@@ -1,11 +1,11 @@
 mergeInto(LibraryManager.library, {
-  TeakInitWebGL: function(ptr_appId, ptr_apiKey) {
+  TeakInitWebGL: function(ptr_appId, ptr_apiKey, enableSdk5BehaviorsInt) {
     var appId = Pointer_stringify(ptr_appId);
     var apiKey = Pointer_stringify(ptr_apiKey);
 
-    (function(){window.teak=window.teak||[];window.teak.methods=["init","on","asyncInit","identify","trackEvent","postAction","postAchievement","postHighScore","canMakeFeedPost","popupFeedPost","reportNotificationClick","reportFeedClick","sendRequest","acceptRequest","loadInboxData", "claimReward", "setIsUnity", "scheduleNotification", "cancelNotification", "cancelAllNotifications", "setStringAttribute", "setNumberAttribute", "scheduleLongDistanceNotification", "reportUnityCanvasPurchase"];window.teak.factory=function(e){return function(){var t=Array.prototype.slice.call(arguments);t.unshift(e);window.teak.push(t);return window.teak}};for(var e=0;e<window.teak.methods.length;e++){var t=window.teak.methods[e];if(!window.teak[t]){window.teak[t]=window.teak.factory(t)}}})()
+    (function(){window.teak=window.teak||[];window.teak.methods=["init","on","asyncInit","identify","trackEvent","postAction","postAchievement","postHighScore","canMakeFeedPost","popupFeedPost","reportNotificationClick","reportFeedClick","sendRequest","acceptRequest","loadInboxData", "claimReward", "setIsUnity", "scheduleNotification", "cancelNotification", "cancelAllNotifications", "setStringAttribute", "setNumberAttribute", "scheduleLongDistanceNotification", "reportUnityCanvasPurchase", "deleteEmail", "setChannelState"];window.teak.factory=function(e){return function(){var t=Array.prototype.slice.call(arguments);t.unshift(e);window.teak.push(t);return window.teak}};for(var e=0;e<window.teak.methods.length;e++){var t=window.teak.methods[e];if(!window.teak[t]){window.teak[t]=window.teak.factory(t)}}})()
 
-    window.teak.init(appId, apiKey);
+    window.teak.init(appId, apiKey, false, null, enableSdk5BehaviorsInt !== 0);
     window.teak.setIsUnity();
 
     var doTeakInit = function() {
@@ -26,7 +26,7 @@ mergeInto(LibraryManager.library, {
     var userId = Pointer_stringify(ptr_userId);
     var configJson = Pointer_stringify(ptr_configJson);
     var config = JSON.parse(configJson);
-    window.teak.identify(userId, null, null, {email: config.email});
+    window.teak.identify(userId, null, null, config);
 
     window.teak.on('udidAvailable', function() {
       // Teak attribution params
@@ -50,6 +50,15 @@ mergeInto(LibraryManager.library, {
 
       // Always send launch summary
       SendMessage("TeakGameObject", "PostLaunchSummary", JSON.stringify(attribution));
+
+      // Always send UserDataEvent
+      SendMessage("TeakGameObject", "UserDataEvent", JSON.stringify({
+        additionalData: window.teak.additionalData,
+        emailStatus: window.teak.optOutStates.email,
+        pushStatus: window.teak.optOutStates.push,
+        smsStatus: window.teak.optOutStates.sms,
+        pushRegistration: {}
+      }));
     });
 
     window.teak.claimReward(function(reply) {
@@ -204,5 +213,19 @@ mergeInto(LibraryManager.library, {
   TeakUnityReportCanvasPurchase: function(ptr_payload) {
     var payload = Pointer_stringify(ptr_payload);
     window.teak.reportUnityCanvasPurchase(payload);
+  },
+  TeakDeleteEmail: function() {
+    window.teak.deleteEmail();
+  },
+  TeakSetStateForChannel_CallbackId: function(ptr_state, ptr_channel, ptr_callbackId) {
+    var state = Pointer_stringify(ptr_state);
+    var channel = Pointer_stringify(ptr_channel);
+    var callbackId = Pointer_stringify(ptr_callbackId);
+
+    window.teak.setChannelState(channel, state, function(reply) {
+      reply._callbackId = callbackId;
+      var replyAsString = JSON.stringify(reply);
+      SendMessage("TeakGameObject", "TeakOperationCallback", replyAsString);
+    });
   }
 });

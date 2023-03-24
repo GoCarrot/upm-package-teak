@@ -31,7 +31,7 @@ public partial class Teak : MonoBehaviour {
     /// Manually initialize Teak.
     /// </summary>
     /// \note
-    /// Under normal circumstances it is not necessassary to call this, and you can
+    /// Under normal circumstances it is not necessary to call this, and you can
     /// simply use Teak.Instance (which calls this method).
     public static Teak Init() {
         if (mInstance == null) {
@@ -280,7 +280,7 @@ public partial class Teak : MonoBehaviour {
     /// \note This should be the same way you identify the user in your backend.
     /// <param name="userIdentifier">An identifier which is unique for the current user.</param>
     /// <param name="userConfiguration">Additional configuration for the current user.</param>
-    public void IdentifyUser(string userIdentifier, UserConfiguration userConfiguration) {
+    public void IdentifyUser(string userIdentifier, UserConfiguration userConfiguration = null) {
         this.UserId = userIdentifier;
         if (userConfiguration == null) { userConfiguration = new UserConfiguration(); }
 
@@ -317,31 +317,6 @@ public partial class Teak : MonoBehaviour {
         TeakLogout();
 #endif
     }
-
-    /// <summary>Assign email opt-out status for the current user.</summary>
-    /// <param name="optOut">True if the user wants to opt-out of Teak email campaigns.</param>
-    public void SetOptOutEmail(bool optOut) {
-#if UNITY_EDITOR
-#elif UNITY_ANDROID
-        AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
-        teak.CallStatic("setOptOutEmail", optOut);
-#elif UNITY_IPHONE || UNITY_WEBGL
-        TODO
-#endif
-    }
-
-    /// <summary>Assign push notification opt-out status for the current user.</summary>
-    /// <param name="optOut">True if the user wants to opt-out of Teak push notification campaigns.</param>
-    public void SetOptOutPush(bool optOut) {
-#if UNITY_EDITOR
-#elif UNITY_ANDROID
-        AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
-        teak.CallStatic("setOptOutPush", optOut);
-#elif UNITY_IPHONE || UNITY_WEBGL
-        TODO
-#endif
-    }
-
 
     /// <summary>
     /// On iOS, if 'TeakDoNotRefreshPushToken' is set to 'true' then this method
@@ -491,6 +466,24 @@ public partial class Teak : MonoBehaviour {
     }
 
     /// <summary>
+    /// Determine if Teak can open directly to the settings for this app.
+    /// </summary>
+    public bool CanOpenSettingsAppToThisAppsSettings {
+        get {
+#if UNITY_EDITOR || UNITY_WEBGL
+            return false;
+#elif UNITY_ANDROID
+            AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
+            return teak.CallStatic<bool>("canOpenSettingsAppToThisAppsSettings");
+#elif UNITY_IPHONE
+            return TeakCanOpenSettingsAppToThisAppsSettings();
+#else
+            return false;
+#endif
+        }
+    }
+
+    /// <summary>
     /// Open the settings for your app.
     /// </summary>
     /// <returns>false if Teak was unable to open the settings for your app, true otherwise.</returns>
@@ -508,6 +501,60 @@ public partial class Teak : MonoBehaviour {
         return TeakOpenSettingsAppToThisAppsSettings();
 #else
         return false;
+#endif
+    }
+
+    /// <summary>
+    /// Determine if Teak can open directly to the notification settings for this app.
+    /// </summary>
+    public bool CanOpenNotificationSettings {
+        get {
+#if UNITY_EDITOR || UNITY_WEBGL
+            return false;
+#elif UNITY_ANDROID
+            AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
+            return teak.CallStatic<bool>("canOpenNotificationSettings");
+#elif UNITY_IPHONE
+            return TeakCanOpenNotificationSettings();
+#else
+            return false;
+#endif
+        }
+    }
+
+    /// <summary>
+    /// Open the notification settings for your app.
+    /// </summary>
+    /// <returns>false if Teak was unable to open the notification settings for your app, true otherwise.</returns>
+    public bool OpenNotificationSettings() {
+        if (this.Trace) {
+            Debug.Log("[Teak] OpenNotificationSettings()");
+        }
+
+#if UNITY_EDITOR || UNITY_WEBGL
+        return false;
+#elif UNITY_ANDROID
+        AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
+        return teak.CallStatic<bool>("openNotificationSettings");
+#elif UNITY_IPHONE
+        return TeakOpenNotificationSettings();
+#else
+        return false;
+#endif
+    }
+
+    /// <summary>
+    /// Delete the email address associated with the current user.
+    /// </summary>
+    public void DeleteEmail() {
+#if UNITY_EDITOR
+        return;
+#elif UNITY_ANDROID
+        AndroidJavaClass teak = new AndroidJavaClass("io.teak.sdk.Teak");
+        teak.CallStatic("deleteEmail");
+#elif UNITY_IPHONE || UNITY_WEBGL
+        // TODO: WebGL impl.
+        TeakDeleteEmail();
 #endif
     }
 
@@ -568,6 +615,39 @@ public partial class Teak : MonoBehaviour {
     }
 
     /// <summary>
+    /// Get push notification registration information from Teak.
+    /// </summary>
+    /// <remarks>
+    /// This dictionary is in the the format: <br/>``{"key" : <"key as a string>", "type" : "<apns | gcm | adm>", "extras" : {}}``
+    /// </remarks>
+    /// \note The only current value inside extras is ``gcm_sender_id`` if ``type`` is ``'gcm'``
+    /// <returns>A dictionary containing push registration info, or null if it's not ready</returns>
+    public Dictionary<string, object> GetNotificationRegistration() {
+        Dictionary<string, object> ret = new Dictionary<string, object>() {
+            {"key", null},
+            {"type", null},
+            {"extras", new Dictionary<string, object>()}
+        };
+
+        Dictionary<string, object> deviceConfiguration = this.GetDeviceConfiguration();
+        if (deviceConfiguration != null && deviceConfiguration.ContainsKey("pushRegistration")) {
+            Dictionary<string, object> pr = deviceConfiguration["pushRegistration"] as Dictionary<string, object>;
+            if (pr.ContainsKey("apns_push_key")) {
+                ret["key"] = pr["apns_push_key"];
+                ret["type"] = "apns";
+            } else if (pr.ContainsKey("adm_push_key")) {
+                ret["key"] = pr["adm_push_key"];
+                ret["type"] = "adm";
+            } else if (pr.ContainsKey("gcm_push_key")) {
+                ret["key"] = pr["gcm_push_key"];
+                ret["type"] = "gcm";
+                (ret["extras"] as Dictionary<string, object>)["gcm_sender_id"] = pr["gcm_sender_id"];
+            }
+        }
+        return ret;
+    }
+
+    /// <summary>
     /// Register for Provisional Push Notifications.
     /// </summary>
     /// <remarks>
@@ -585,12 +665,36 @@ public partial class Teak : MonoBehaviour {
     /// <summary>
     /// Register for Push Notifications.
     /// </summary>
-    /// <remarks>
-    /// This method only has any effect on iOS devices, and is safe to use on iOS 8+
-    /// </remarks>
     public void RegisterForNotifications() {
-#if !UNITY_EDITOR && UNITY_IPHONE
+#if UNITY_EDITOR || UNITY_WEBGL
+#elif UNITY_IPHONE
         TeakRequestPushAuthorization(false);
+#elif UNITY_ANDROID
+        // If we're not on API 33, no action needed.
+        using (var buildVersion = new AndroidJavaClass("android.os.Build$VERSION")) {
+            int sdkVersion = buildVersion.GetStatic<int>("SDK_INT");
+            if (sdkVersion < 33) {
+                return;
+            }
+        }
+
+        // If the TargetSDK version isn't 33, no action needed.
+        using (AndroidJavaClass helpers = new AndroidJavaClass("io.teak.sdk.Helpers"),
+                unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer")) {
+
+            using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity")) {
+                int sdkVersion = helpers.CallStatic<int>("getTargetSDKVersion", activity);
+                if (sdkVersion < 33) {
+                    return;
+                }
+            }
+        }
+
+        // Skip if the permission is granted
+        string POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(POST_NOTIFICATIONS)) {
+            UnityEngine.Android.Permission.RequestUserPermission(POST_NOTIFICATIONS);
+        }
 #endif
     }
 
@@ -680,6 +784,9 @@ public partial class Teak : MonoBehaviour {
 
     [DllImport ("__Internal")]
     private static extern bool TeakHandleDeepLinkPath(string url);
+
+    [DllImport ("__Internal")]
+    private static extern void TeakDeleteEmail();
 #endif
 
 #if UNITY_IPHONE
@@ -687,7 +794,16 @@ public partial class Teak : MonoBehaviour {
     private static extern int TeakGetNotificationState();
 
     [DllImport ("__Internal")]
+    private static extern bool TeakCanOpenSettingsAppToThisAppsSettings();
+
+    [DllImport ("__Internal")]
+    private static extern bool TeakCanOpenNotificationSettings();
+
+    [DllImport ("__Internal")]
     private static extern bool TeakOpenSettingsAppToThisAppsSettings();
+
+    [DllImport ("__Internal")]
+    private static extern bool TeakOpenNotificationSettings();
 
     [DllImport ("__Internal")]
     private static extern bool TeakRequestPushAuthorization(bool includeProvisional);
@@ -701,7 +817,7 @@ public partial class Teak : MonoBehaviour {
 
 #if UNITY_WEBGL
     [DllImport ("__Internal")]
-    private static extern string TeakInitWebGL(string appId, string apiKey);
+    private static extern string TeakInitWebGL(string appId, string apiKey, int enableSdk5Behaviors);
 
     [DllImport ("__Internal")]
     private static extern void TeakUnityReadyForDeepLinks();
@@ -717,6 +833,9 @@ public partial class Teak : MonoBehaviour {
 
     [DllImport ("__Internal")]
     private static extern void TeakRefreshPushTokenIfAuthorized();
+
+    [DllImport ("__Internal")]
+    private static extern void TeakRelease(IntPtr obj);
 #endif
     /// @endcond
 
@@ -907,7 +1026,42 @@ public partial class Teak : MonoBehaviour {
             Debug.LogError("[Teak] Error executing callback for notification data: " + jsonString + "\n" + e.ToString());
         }
     }
+
+    private static Dictionary<string, System.Action<Dictionary<string, object>>> teakOperationWebGlCallbackMap = new Dictionary<string, System.Action<Dictionary<string, object>>>();
+    void TeakOperationCallback(string jsonString) {
+        try {
+            Dictionary<string, object> json = Json.TryDeserialize(jsonString) as Dictionary<string, object>;
+            if (json == null) {
+                return;
+            }
+
+            string callbackId = json["_callbackId"] as string;
+            json.Remove("_callbackId");
+
+            if (teakOperationWebGlCallbackMap.ContainsKey(callbackId)) {
+                System.Action<Dictionary<string, object>> callback = teakOperationWebGlCallbackMap[callbackId];
+                teakOperationWebGlCallbackMap.Remove(callbackId);
+                callback(json);
+            }
+        } catch (Exception e) {
+            Debug.LogError("[Teak] Error executing callback: " + jsonString + "\n\t" + e.ToString());
+        }
+    }
 #endif
+
+    public static void SafePerformCallback<T>(string method, System.Action<T> callback, T param) {
+        try {
+            if (callback != null) {
+                callback(param);
+            }
+        } catch (Exception e) {
+            if (param is Dictionary<string, object>) {
+                Teak.Instance.ReportCallbackError(method, e, param as Dictionary<string, object>);
+            } else if (param is IToJson) {
+                Teak.Instance.ReportCallbackError(method, e, (param as IToJson).toJson());
+            }
+        }
+    }
     /// @endcond
     #endregion
 
@@ -942,7 +1096,7 @@ public partial class Teak : MonoBehaviour {
             throw new ArgumentNullException("Teak.APIKey cannot be null or empty.");
         }
 
-        TeakInitWebGL(appId, apiKey);
+        TeakInitWebGL(appId, apiKey, TeakSettings.EnableSDK5Behaviors ? 1 : 0);
 #else
         if (this.AppConfiguration != null) {
             appId = this.AppConfiguration["appId"] as string;
