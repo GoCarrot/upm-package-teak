@@ -5,7 +5,7 @@ public class TeakVersion
     {
         get
         {
-            return "4.2.0.rc2";
+            return "4.2.0.rc1";
         }
     }
 }
