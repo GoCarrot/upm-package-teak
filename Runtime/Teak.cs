@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 using MiniJSON.Teak;
+using System.Collections;
 using System.Collections.Generic;
 /// @endcond
 #endregion
@@ -253,7 +254,7 @@ public partial class Teak : MonoBehaviour {
         /// <summary>True if the user should be opted out of push key collection.</summary>
         public bool OptOutPushKey { get; set; }
 
-#if UNITY_ANDROID
+#if !UNITY_EDITOR && UNITY_ANDROID
         public AndroidJavaObject ToAndroidJavaObject() {
             return new AndroidJavaObject("io.teak.sdk.Teak$UserConfiguration",
                                          this.Email, this.FacebookId, this.OptOutFacebook, this.OptOutIdfa, this.OptOutPushKey);
@@ -656,7 +657,7 @@ public partial class Teak : MonoBehaviour {
     /// <returns>true if the device was an iOS 12+ device</returns>
     public bool RegisterForProvisionalNotifications() {
 #if !UNITY_EDITOR && UNITY_IPHONE
-        return TeakRequestPushAuthorization(true);
+        return TeakRequestPushAuthorizationUnity(true, null);
 #else
         return false;
 #endif
@@ -665,16 +666,42 @@ public partial class Teak : MonoBehaviour {
     /// <summary>
     /// Register for Push Notifications.
     /// </summary>
+    /// \deprecated Please use <see cref="RegisterForNotifications(System.Action)"/> instead.
+    /// <remarks>
+    /// This is a compatibility method which simply wraps <see cref="RegisterForNotifications(System.Action)"/> in
+    /// a StartCoRoutine()
+    /// </remarks>
+    [Obsolete("RegisterForNotifications(System.Action) instead.")]
     public void RegisterForNotifications() {
-#if UNITY_EDITOR || UNITY_WEBGL
+        StartCoroutine(this.RegisterForNotifications(null));
+    }
+
+    /// <summary>
+    /// Register for Push Notifications.
+    /// </summary>
+    /// <remarks>
+    /// This is a CoRoutine and will not return until complete.
+    /// </remarks>
+    /// <param name="callback">A callback that</param>
+    public IEnumerator RegisterForNotifications(System.Action<bool> callback) {
+#if UNITY_EDITOR
+        yield return null;
 #elif UNITY_IPHONE
-        TeakRequestPushAuthorization(false);
+        bool keepWaiting = true;
+        string callbackId = DateTime.Now.Ticks.ToString();
+        teakOperationCallbackMap.Add(callbackId, json => {
+            callback(json.ContainsKey("permissionGranted") && json["permissionGranted"] is bool && (bool)json["permissionGranted"]);
+            keepWaiting = false;
+        });
+        TeakRequestPushAuthorizationUnity(false, callbackId);
+        while (keepWaiting) { yield return null; }
 #elif UNITY_ANDROID
         // If we're not on API 33, no action needed.
         using (var buildVersion = new AndroidJavaClass("android.os.Build$VERSION")) {
             int sdkVersion = buildVersion.GetStatic<int>("SDK_INT");
             if (sdkVersion < 33) {
-                return;
+                callback(true);
+                yield break;
             }
         }
 
@@ -685,7 +712,8 @@ public partial class Teak : MonoBehaviour {
             using (var activity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity")) {
                 int sdkVersion = helpers.CallStatic<int>("getTargetSDKVersion", activity);
                 if (sdkVersion < 33) {
-                    return;
+                    callback(true);
+                    yield break;
                 }
             }
         }
@@ -693,8 +721,31 @@ public partial class Teak : MonoBehaviour {
         // Skip if the permission is granted
         string POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
         if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(POST_NOTIFICATIONS)) {
-            UnityEngine.Android.Permission.RequestUserPermission(POST_NOTIFICATIONS);
+            bool keepWaiting = true;
+
+            void permissionGranted(string permissionName) {
+                callback(true);
+                keepWaiting = false;
+            }
+
+            void permissionDenied(string permissionName) {
+                callback(false);
+                keepWaiting = false;
+            }
+
+            var androidCallback = new UnityEngine.Android.PermissionCallbacks();
+            androidCallback.PermissionGranted += permissionGranted;
+            androidCallback.PermissionDenied += permissionDenied;
+            androidCallback.PermissionDeniedAndDontAskAgain += permissionDenied;
+
+            UnityEngine.Android.Permission.RequestUserPermission(POST_NOTIFICATIONS, androidCallback);
+            while (keepWaiting) { yield return null; }
+        } else {
+            // Already granted, so tell the callback
+            callback(true);
         }
+#else
+        yield return null;
 #endif
     }
 
@@ -806,7 +857,7 @@ public partial class Teak : MonoBehaviour {
     private static extern bool TeakOpenNotificationSettings();
 
     [DllImport ("__Internal")]
-    private static extern bool TeakRequestPushAuthorization(bool includeProvisional);
+    private static extern bool TeakRequestPushAuthorizationUnity(bool includeProvisional, string callbackId);
 
     [DllImport ("__Internal")]
     private static extern void TeakProcessDeepLinks();
@@ -1026,42 +1077,7 @@ public partial class Teak : MonoBehaviour {
             Debug.LogError("[Teak] Error executing callback for notification data: " + jsonString + "\n" + e.ToString());
         }
     }
-
-    private static Dictionary<string, System.Action<Dictionary<string, object>>> teakOperationWebGlCallbackMap = new Dictionary<string, System.Action<Dictionary<string, object>>>();
-    void TeakOperationCallback(string jsonString) {
-        try {
-            Dictionary<string, object> json = Json.TryDeserialize(jsonString) as Dictionary<string, object>;
-            if (json == null) {
-                return;
-            }
-
-            string callbackId = json["_callbackId"] as string;
-            json.Remove("_callbackId");
-
-            if (teakOperationWebGlCallbackMap.ContainsKey(callbackId)) {
-                System.Action<Dictionary<string, object>> callback = teakOperationWebGlCallbackMap[callbackId];
-                teakOperationWebGlCallbackMap.Remove(callbackId);
-                callback(json);
-            }
-        } catch (Exception e) {
-            Debug.LogError("[Teak] Error executing callback: " + jsonString + "\n\t" + e.ToString());
-        }
-    }
 #endif
-
-    public static void SafePerformCallback<T>(string method, System.Action<T> callback, T param) {
-        try {
-            if (callback != null) {
-                callback(param);
-            }
-        } catch (Exception e) {
-            if (param is Dictionary<string, object>) {
-                Teak.Instance.ReportCallbackError(method, e, param as Dictionary<string, object>);
-            } else if (param is IToJson) {
-                Teak.Instance.ReportCallbackError(method, e, (param as IToJson).toJson());
-            }
-        }
-    }
     /// @endcond
     #endregion
 

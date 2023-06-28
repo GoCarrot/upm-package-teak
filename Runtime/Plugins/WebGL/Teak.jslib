@@ -3,7 +3,7 @@ mergeInto(LibraryManager.library, {
     var appId = Pointer_stringify(ptr_appId);
     var apiKey = Pointer_stringify(ptr_apiKey);
 
-    (function(){window.teak=window.teak||[];window.teak.methods=["init","on","asyncInit","identify","trackEvent","postAction","postAchievement","postHighScore","canMakeFeedPost","popupFeedPost","reportNotificationClick","reportFeedClick","sendRequest","acceptRequest","loadInboxData", "claimReward", "setIsUnity", "scheduleNotification", "cancelNotification", "cancelAllNotifications", "setStringAttribute", "setNumberAttribute", "scheduleLongDistanceNotification", "reportUnityCanvasPurchase", "deleteEmail", "setChannelState"];window.teak.factory=function(e){return function(){var t=Array.prototype.slice.call(arguments);t.unshift(e);window.teak.push(t);return window.teak}};for(var e=0;e<window.teak.methods.length;e++){var t=window.teak.methods[e];if(!window.teak[t]){window.teak[t]=window.teak.factory(t)}}})()
+    (function(){window.teak=window.teak||[];window.teak.methods=["init","on","asyncInit","identify","trackEvent","postAction","postAchievement","postHighScore","canMakeFeedPost","popupFeedPost","reportNotificationClick","reportFeedClick","sendRequest","acceptRequest","loadInboxData", "claimReward", "setIsUnity", "scheduleNotification", "cancelNotification", "cancelAllNotifications", "setStringAttribute", "setNumberAttribute", "scheduleLongDistanceNotification", "reportUnityCanvasPurchase", "deleteEmail", "setChannelState","setCategoryState", "scheduleNotificationWithPersonalization"];window.teak.factory=function(e){return function(){var t=Array.prototype.slice.call(arguments);t.unshift(e);window.teak.push(t);return window.teak}};for(var e=0;e<window.teak.methods.length;e++){var t=window.teak.methods[e];if(!window.teak[t]){window.teak[t]=window.teak.factory(t)}}})()
 
     window.teak.init(appId, apiKey, false, null, enableSdk5BehaviorsInt !== 0);
     window.teak.setIsUnity();
@@ -38,6 +38,7 @@ mergeInto(LibraryManager.library, {
         teakChannelName: window.teak.queryParameters.teak_channel_name,
         teakRewardId: window.teak.queryParameters.teak_reward_id,
         teakDeepLink: window.teak.queryParameters.teak_deep_link,
+        teakOptOutCategory: window.teak.queryParameters.teak_opt_out_category,
         launch_link: window.location.href
       };
 
@@ -173,6 +174,20 @@ mergeInto(LibraryManager.library, {
       SendMessage("TeakGameObject", "NotificationCallback", replyAsString);
     });
   },
+  TeakNotificationScheduleWithPersonalization: function(ptr_callbackId, ptr_creativeId, delayInSeconds, ptr_personalizationData) {
+    var creativeId = Pointer_stringify(ptr_creativeId);
+    var personalizationData = null;
+    try {
+      ptr_personalizationData === null ? null : JSON.parse(Pointer_stringify(ptr_personalizationData));
+    } catch(ignored) {}
+    var callbackId = Pointer_stringify(ptr_callbackId);
+
+    window.teak.scheduleNotificationWithPersonalization(creativeId, delayInSeconds, personalizationData, function(reply) {
+      reply._callbackId = callbackId;
+      var replyAsString = JSON.stringify(reply);
+      SendMessage("TeakGameObject", "TeakOperationCallback", replyAsString);
+    });
+  },
   TeakNotificationScheduleLongDistance: function(ptr_callbackId, ptr_creativeId, ptr_jsonUserIds, delayInSeconds) {
     var creativeId = Pointer_stringify(ptr_creativeId);
     var callbackId = Pointer_stringify(ptr_callbackId);
@@ -234,5 +249,37 @@ mergeInto(LibraryManager.library, {
       var replyAsString = JSON.stringify(reply);
       SendMessage("TeakGameObject", "TeakOperationCallback", replyAsString);
     });
+  },
+  TeakSetCategoryForChannel_CallbackId: function(ptr_state, ptr_channel, ptr_category, ptr_callbackId) {
+    var state = Pointer_stringify(ptr_state);
+    var channel = Pointer_stringify(ptr_channel);
+    var category = Pointer_stringify(ptr_category);
+    var callbackId = Pointer_stringify(ptr_callbackId);
+
+    if (channel === 'platform_push') {
+      channel = 'desktop_push';
+    }
+
+    window.teak.setCategoryState(channel, category, state, function(reply) {
+      reply._callbackId = callbackId;
+      var replyAsString = JSON.stringify(reply);
+      SendMessage("TeakGameObject", "TeakOperationCallback", replyAsString);
+    });
+  },
+  TeakNotificationGetCategoriesJson: function() {
+    var ret = [];
+    Object.keys(window.teak.availableCategories).forEach(function (key) {
+      ret.push({
+        id: key,
+        name: window.teak.availableCategories[key]["name"],
+        description: window.teak.availableCategories[key]["description"],
+      });
+    });
+
+    var retAsJson = JSON.stringify(ret);
+    var bufferSize = lengthBytesUTF8(retAsJson) + 1;
+    var buffer = _malloc(bufferSize);
+    stringToUTF8(retAsJson, buffer, bufferSize);
+    return buffer;
   }
 });
