@@ -1,7 +1,7 @@
 {
     "name": "io.teak.unity.sdk",
     "displayName": "Teak SDK",
-    "version": "4.3.0.rc3",
+    "version": "4.3.0.rc4",
     "unity": "2018.3",
     "description": "Teak SDK for Unity.",
     "changelogUrl": "https://docs.teak.io/unity/latest/changelog/changelog.html",
