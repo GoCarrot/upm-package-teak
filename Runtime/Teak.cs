@@ -92,16 +92,18 @@ public partial class Teak : MonoBehaviour {
     public enum NotificationState : int {
         /// <summary>Unable to determine the notification state.</summary>
         UnableToDetermine   = -1,
-        /// <summary>Notifications are enabled, your app can send push notifications.</summary>
+        /// <summary>Notifications are enabled, your app can display notifications.</summary>
         Enabled             = 0,
-        /// <summary>Notifications are disabled, your app cannot send push notifications.</summary>
+        /// <summary>Notifications are disabled, your app cannot display notifications.</summary>
         Disabled            = 1,
         /// <summary>
-        /// Provisional notifications are enabled, your app can send notifications but
+        /// Provisional notifications are enabled, your app can receive notifications but
         /// they will only display in the Notification Center (iOS 12+ only).
         /// </summary>
         Provisional         = 2,
-        /// <summary>The user has not been asked to authorize push notifications (iOS only).</summary>
+        /// <summary>The user has not been asked to authorize notifications (iOS only).
+        /// On Android the NotificationState will be Disabled if permissions have never
+        /// been requested, due to OS limitations.</summary>
         NotRequested        = 3
     }
 
@@ -272,9 +274,16 @@ public partial class Teak : MonoBehaviour {
         }
     }
 
+    /// <summary>
+    /// Remote Teak configuration data for the game.
+    /// <summary>
     public class ConfigurationData {
+        /// <summary>
+        /// The list of Opt-Out Categories configured for the game on the Teak Dashboard.
+        /// </summary>
         public List<Channel.Category> ChannelCategories { get; private set; }
 
+        /// @cond hide_from_doxygen
         public ConfigurationData(Dictionary<string, object> json) {
             if(json.ContainsKey("channelCategories")) {
                 List<object> categories = json["channelCategories"] as List<object>;
@@ -283,6 +292,7 @@ public partial class Teak : MonoBehaviour {
                 }
             }
         }
+        /// @endcond
     }
 
     /// <summary>
@@ -403,7 +413,7 @@ public partial class Teak : MonoBehaviour {
     public event System.Action<TeakNotification> OnForegroundNotification;
 
     /// <summary>
-    /// An event which gets fired when Teak remote configuration (e.g. the list of Opt Out Categories) is ready
+    /// An event which gets fired when Teak remote configuration is ready.
     /// </summary>
     public event System.Action<ConfigurationData> OnConfigurationData;
 
@@ -675,7 +685,7 @@ public partial class Teak : MonoBehaviour {
     /// <returns>true if the device was an iOS 12+ device</returns>
     public bool RegisterForProvisionalNotifications() {
 #if !UNITY_EDITOR && UNITY_IPHONE
-        return TeakRequestPushAuthorizationUnity(true, null);
+        return TeakRequestPushAuthorizationUnity(true, "nocallback");
 #else
         return false;
 #endif
@@ -687,7 +697,7 @@ public partial class Teak : MonoBehaviour {
     /// \deprecated Please use <see cref="RegisterForNotifications(System.Action)"/> instead.
     /// <remarks>
     /// This is a compatibility method which simply wraps <see cref="RegisterForNotifications(System.Action)"/> in
-    /// a StartCoRoutine()
+    /// a StartCoroutine()
     /// </remarks>
     [Obsolete("RegisterForNotifications(System.Action) instead.")]
     public void RegisterForNotifications() {
@@ -698,9 +708,10 @@ public partial class Teak : MonoBehaviour {
     /// Register for Push Notifications.
     /// </summary>
     /// <remarks>
-    /// This is a CoRoutine and will not return until complete.
+    /// This is a Coroutine and will not return until the player grants or denies push permissions.
     /// </remarks>
-    /// <param name="callback">A callback that</param>
+    /// <param name="callback">The callback will be called with true if the player granted
+    /// push permissions and false if the player denied push permissions.</param>
     public IEnumerator RegisterForNotifications(System.Action<bool> callback) {
 #if UNITY_EDITOR
         yield return null;
