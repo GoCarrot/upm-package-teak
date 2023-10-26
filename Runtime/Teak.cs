@@ -36,7 +36,7 @@ public partial class Teak : MonoBehaviour {
     /// simply use Teak.Instance (which calls this method).
     public static Teak Init() {
         if (mInstance == null) {
-            mInstance = FindObjectOfType(typeof(Teak)) as Teak;
+            mInstance = FindFirstObjectByType(typeof(Teak)) as Teak;
 
             if (mInstance == null) {
                 GameObject teakGameObject = GameObject.Find("TeakGameObject");
@@ -765,7 +765,10 @@ public partial class Teak : MonoBehaviour {
             var androidCallback = new UnityEngine.Android.PermissionCallbacks();
             androidCallback.PermissionGranted += permissionGranted;
             androidCallback.PermissionDenied += permissionDenied;
+#if UNITY_2023_1_OR_NEWER
+#else
             androidCallback.PermissionDeniedAndDontAskAgain += permissionDenied;
+#endif
 
             UnityEngine.Android.Permission.RequestUserPermission(POST_NOTIFICATIONS, androidCallback);
             while (keepWaiting) { yield return null; }

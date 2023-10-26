@@ -1,4 +1,4 @@
-#if UNITY_EDITOR 
+#if UNITY_EDITOR
 #if UNITY_IOS
 
 #region References
@@ -165,10 +165,16 @@ public class TeakXcodeProjectMutator : IPostprocessBuildWithReport {
             return extensionTarget;
         }
 
+#if UNITY_2022_2_OR_NEWER
+        string applicationIdentifier = PlayerSettings.GetApplicationIdentifier(NamedBuildTarget.iOS);
+#else
+        string applicationIdentifier = PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.iOS);
+#endif
+
         /////
         // Create app extension target
         extensionTarget = project.AddAppExtension(target, name,
-                          PlayerSettings.GetApplicationIdentifier(BuildTargetGroup.iOS) + "." + displayName,
+                          applicationIdentifier + "." + displayName,
                           projectPathInfo.GetRelativePathTo(new FileInfo(extensionSrcPath + "/Info.plist")));
         string buildPhaseId = project.AddSourcesBuildPhase(extensionTarget);
 
@@ -213,7 +219,22 @@ public class TeakXcodeProjectMutator : IPostprocessBuildWithReport {
 
         /////
         // Build properties
-        project.SetBuildProperty(extensionTarget, "IPHONEOS_DEPLOYMENT_TARGET", "10.0");
+        // If there is no targetOSVersionString or we're unable to parse it, just leave our
+        // deployment target blank, as I have no idea what Unity is doing in that case.
+        string targetOSVersionString = PlayerSettings.iOS.targetOSVersionString;
+        if(targetOSVersionString != null) {
+            string majorOSVersionString = targetOSVersionString.Split('.')[0];
+            if(Int32.TryParse(majorOSVersionString, out int majorOSVersion)) {
+                if(majorOSVersion >= 10) {
+                    project.SetBuildProperty(extensionTarget, "IPHONEOS_DEPLOYMENT_TARGET", targetOSVersionString);
+                } else {
+                    // If the main app is targeting iOS <10, ensure that our extensions target iOS 10 since
+                    // that is the minimum required iOS version for extensions.
+                    project.SetBuildProperty(extensionTarget, "IPHONEOS_DEPLOYMENT_TARGET", "10.0");
+                }
+            }
+        }
+
         project.AddBuildProperty(extensionTarget, "TARGETED_DEVICE_FAMILY", "1,2");
 
         // armv7 and armv7s do not support Notification Content Extensions
