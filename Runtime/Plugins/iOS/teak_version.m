@@ -1,1 +1,1 @@
-NSString* TeakUnitySDKVersion = @"4.3.3";
+NSString* TeakUnitySDKVersion = @"4.3.4.rc0";
